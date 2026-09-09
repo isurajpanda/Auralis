@@ -1,0 +1,19 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-dotenv>=1.0
+soundfile>=0.12
+librosa>=0.10
+sqlmodel>=0.0.16
+websockets>=12
+python-multipart>=0.0.7
+httpx>=0.27
+pytest>=8
+pytest-asyncio>=0.23
+numpy
+# Real-model deps (required for NII AntiDeepfake detector; heuristics work without)
+# Windows: CUDA build is large (~2.5GB); CPU build is enough for 2s chunks:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.4
+transformers>=4.40
+safetensors>=0.5
+huggingface_hub>=0.31

@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+dist/
+voice_guard.db
+*.db
+.env
+checkpoints/*.pth
+checkpoints/*.pt
+checkpoints/*.safetensors
+.DS_Store

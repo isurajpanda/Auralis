@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+voice_guard.db
+.env
+checkpoints/*.pth
+checkpoints/*.safetensors
