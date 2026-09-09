@@ -19,10 +19,21 @@ FUSION_WEIGHTS = {
     "rawnet2": float(os.getenv("FUSION_WEIGHT_RAWNET2", "0.2")),
     "xlsr": float(os.getenv("FUSION_WEIGHT_XLSR", "0.15")),
     "antideepfake": float(os.getenv("FUSION_WEIGHT_ANTIDEEPFAKE", "0.5")),
+    # Arena true-detection models (each returns None when unavailable, so
+    # absent models drop out and the remaining weights renormalize).
+    "w2v2_aasist": float(os.getenv("FUSION_WEIGHT_W2V2_AASIST", "0.25")),
+    "df_arena": float(os.getenv("FUSION_WEIGHT_DF_ARENA", "0.2")),
 }
 
 FEATURE_ONLY_LOGGING = os.getenv("FEATURE_ONLY_LOGGING", "false").lower() == "true"
 REPLAY_CHUNK_SECONDS = int(os.getenv("REPLAY_CHUNK_SECONDS", "2"))
+# Pretrained detectors score a rolling window of this many seconds (their
+# native 4s operating point); heuristics always score the 2s chunk.
+REAL_WINDOW_SECONDS = int(os.getenv("REAL_WINDOW_SECONDS", "4"))
+# Temporal smoothing: fused score broadcast is the mean of the last N raw
+# chunk scores; alerts also fire after N consecutive medium+ raw chunks.
+SMOOTHING_CHUNKS = int(os.getenv("SMOOTHING_CHUNKS", "3"))
+ALERT_PERSIST_CHUNKS = int(os.getenv("ALERT_PERSIST_CHUNKS", "2"))
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./voice_guard.db")
 ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "*")
 

@@ -5,6 +5,9 @@ FastAPI single process (port **9000** — not 8000, see Windows note). Owns mode
 ## What it does
 
 - Loads AASIST, RawNet2, XLS-R once at startup (`app/main.py:1` lifespan) and exposes `predict(wav,sr)`.
+  Pretrained detectors: NII AntiDeepfake (`app/models/antideepfake.py:1`), W2V2-AASIST ONNX
+  (`app/models/w2v2_aasist.py:1`), DF Arena 500M best-effort (`app/models/df_arena.py:1`) —
+  each returns `None` when unavailable so fusion renormalizes over the rest.
 - Fuses via `app/fusion.py:1` (weights in `app/config.py:1`) → 0–100 + `risk_level`.
 - Sessions in SQLite `voice_guard.db` (`app/sessions/session_manager.py:1`).
 - REST + WS (`app/routes/calls.py:1`, `health.py:1`, `signaling.py:1`, `app/ws/risk_socket.py:1` + `signaling.py:1`).
@@ -48,8 +51,18 @@ powershell -ExecutionPolicy Bypass -File scripts\run-all.ps1 -BackendPort 9001  
 ## Env (.env.example)
 
 - `PORT=9000`, `HOST=0.0.0.0`
-- `LOW_THRESHOLD=30`, `HIGH_THRESHOLD=70`
-- `FUSION_WEIGHT_AASIST=0.4`, `FUSION_WEIGHT_RAWNET2=0.3`, `FUSION_WEIGHT_XLSR=0.3`
+- `LOW_THRESHOLD=15`, `HIGH_THRESHOLD=70` (low calibrated on measured
+  genuine ≤11.3 vs noisy-TTS ≥17.5; high catches toy-synth/phone-TTS)
+- `REAL_WINDOW_SECONDS=4` (pretrained models score rolling 4s),
+  `SMOOTHING_CHUNKS=3` (broadcast = mean of last 3),
+  `ALERT_PERSIST_CHUNKS=2` (2 consecutive medium+ raw chunks alert)
+- `FUSION_WEIGHT_AASIST=0.15`, `FUSION_WEIGHT_RAWNET2=0.2`, `FUSION_WEIGHT_XLSR=0.15`,
+  `FUSION_WEIGHT_ANTIDEEPFAKE=0.5`, `FUSION_WEIGHT_W2V2_AASIST=0.15`, `FUSION_WEIGHT_DF_ARENA=0.2`
+  (weights renormalize over models that return a score; unavailable models return `None`)
+- `REAL_MODEL_ENABLED=true`, `REAL_MODEL_DEVICE=auto` (NII AntiDeepfake)
+- `W2V2_AASIST_ENABLED=true` (Arena W2V2-AASIST ONNX, auto-downloads ~1.2 GB to `checkpoints/`)
+- `DF_ARENA_ENABLED=true`, `DF_ARENA_DEVICE=auto`, `DF_ARENA_REPO=...` (best-effort; upstream
+  repo is missing custom-code files so it stays out of the fusion until fixed)
 - `FEATURE_ONLY_LOGGING=false`
 - `REPLAY_CHUNK_SECONDS=2`, `DATABASE_URL=sqlite:///./voice_guard.db`, `ALLOW_ORIGINS=*`
 - `XLSR_USE_HF=false` → `true` for HF `facebook/wav2vec2-xls-r-300m`
@@ -68,6 +81,15 @@ Inference via `asyncio.to_thread`, same `process_chunk` for replay + live (`hand
 ## Checkpoints
 
 - `checkpoints/aasist.pth` / `rawnet2.pth` — from AASIST/ASVspoof repos. If missing, heuristic runs (see HANDOFF.md).
+- `checkpoints/anti-deepfake-small.safetensors` (~380 MB) — NII AntiDeepfake, auto-downloaded.
+- `checkpoints/w2v2-aasist.onnx` (~1.2 GB) — SpeechAntiSpoofingBenchmarks W2V2-AASIST,
+  auto-downloaded on first start. Runs on the RTX GPU via `onnxruntime-gpu`
+  (~0.09 s/window vs ~0.9 s CPU; `W2V2_AASIST_DEVICE=cpu` forces CPU).
+  Coexists with AntiDeepfake on the 4 GB card at ~2.6 GB VRAM steady.
+  Weighted 0.15: safe on sample calls (genuine ≤22 low, cloned ~83 high)
+  but uncalibrated on toy files — validate on real TTS/VC.
+- DF Arena 500M (~1.7 GB) loads via transformers `trust_remote_code`; currently unavailable
+  upstream (missing custom-code files) so it self-excludes from fusion.
 
 ## Tests
 

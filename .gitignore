@@ -10,4 +10,7 @@ voice_guard.db
 checkpoints/*.pth
 checkpoints/*.pt
 checkpoints/*.safetensors
+*.safetensors
+*.onnx
+*.engine
 .DS_Store

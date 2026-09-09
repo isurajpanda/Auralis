@@ -19,10 +19,17 @@ async def lifespan(app: FastAPI):
         from app.models.rawnet2 import get_model as get_rawnet
         from app.models.xlsr import get_model as get_xlsr
         from app.models.antideepfake import get_model as get_real
+        from app.models.w2v2_aasist import get_model as get_w2v2
+        from app.models.df_arena import get_model as get_arena
         get_aasist()
         get_rawnet()
         get_xlsr()
-        get_real()  # 380MB checkpoint; falls back to heuristics if unavailable
+        for name, fn in (("antideepfake", get_real), ("w2v2_aasist", get_w2v2),
+                         ("df_arena", get_arena)):
+            try:
+                fn()  # each is optional; falls back to other models if unavailable
+            except Exception as e:
+                print(f"[Startup] {name} skipped: {e}")
         print("[Startup] Models loaded")
     except Exception as e:
         print(f"[Startup] Model loading error: {e}")

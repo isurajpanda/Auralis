@@ -30,6 +30,8 @@ async def end_call(session_id: str):
     if not call:
         raise HTTPException(status_code=404, detail="Session not found")
     result = end_session(session_id)
+    from app.replay.replay_engine import end_session_cleanup
+    end_session_cleanup(session_id)
     return {"session_id": session_id, **result}
 
 @router.get("/calls")

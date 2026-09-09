@@ -17,3 +17,8 @@ torch>=2.4
 transformers>=4.40
 safetensors>=0.5
 huggingface_hub>=0.31
+# W2V2-AASIST arena model runs on pre-exported ONNX (no fairseq needed).
+# -gpu build puts it on the RTX 3050 (~10x faster than CPU); needs the CUDA 12
+# + cuDNN 9 DLLs that torch already bundles (no system CUDA required).
+# No NVIDIA GPU? Use plain `onnxruntime>=1.17` instead (CPU fallback is automatic).
+onnxruntime-gpu>=1.17

@@ -4,4 +4,11 @@ __pycache__/
 voice_guard.db
 .env
 checkpoints/*.pth
+checkpoints/*.pt
+checkpoints/*.ckpt
 checkpoints/*.safetensors
+checkpoints/*.onnx
+checkpoints/*.onnx_data/
+checkpoints/*.bin
+checkpoints/*.engine
+checkpoints/*.plan
