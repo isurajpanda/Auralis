@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { BACKEND_HTTP } from '../lib/config.js'
+import { logActivity } from '../lib/activityLog.js'
 
 export default function CallPanel({ onStart, onEnd, sessionId, connected }) {
   const [loading, setLoading] = useState(false)
@@ -11,15 +12,25 @@ export default function CallPanel({ onStart, onEnd, sessionId, connected }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'replay', replay_sample: sample })
       })
+      if (!res.ok) throw new Error(`http ${res.status}`)
       const data = await res.json()
+      logActivity('ok', `Replay started: ${sample} (${String(data.session_id).slice(0, 8)})`)
       onStart(data.session_id)
     } catch (e) {
+      logActivity('error', `Replay start failed: ${e.message}`)
       alert('Failed to start call: ' + e.message)
     } finally { setLoading(false) }
   }
   const handleEnd = async () => {
     if (!sessionId) return
-    await fetch(`${BACKEND_HTTP}/api/calls/${sessionId}/end`, { method: 'POST' })
+    try {
+      const res = await fetch(`${BACKEND_HTTP}/api/calls/${sessionId}/end`, { method: 'POST' })
+      if (!res.ok) throw new Error(`http ${res.status}`)
+      const data = await res.json().catch(() => ({}))
+      logActivity('info', `Replay ended (${String(sessionId).slice(0, 8)})${data.final_risk_score != null ? ` — final ${data.final_risk_score} (${data.final_risk_level ?? data.risk_level ?? '?'})` : ''}`)
+    } catch (e) {
+      logActivity('warn', `Replay end call failed: ${e.message} — clearing locally`)
+    }
     onEnd()
   }
   return (
@@ -34,21 +45,22 @@ export default function CallPanel({ onStart, onEnd, sessionId, connected }) {
         <button
           onClick={() => handle('bonafide')}
           disabled={loading || !!sessionId}
-          className="btn-primary"
-          style={{ background:'linear-gradient(180deg, #334155, #1e293b)', color:'white', border:'1px solid rgba(255,255,255,0.1)', boxShadow:'none' }}
+          className="btn-ghost"
+          style={{ display: 'block', textAlign: 'left', padding: '12px 14px' }}
         >
           <div style={{ fontSize:12, opacity:.7, letterSpacing:'.08em', textTransform:'uppercase' }}>Step 1</div>
           <div style={{ fontSize:14, marginTop:2 }}>Normal voice</div>
-          <div style={{ fontSize:11, opacity:.6, marginTop:4 }}>~54 risk • no alert</div>
+          <div style={{ fontSize:11, opacity:.6, marginTop:4 }}>genuine sample • gauge stays green</div>
         </button>
         <button
           onClick={() => handle('cloned')}
           disabled={loading || !!sessionId}
           className="btn-danger"
+          style={{ display: 'block', textAlign: 'left', padding: '12px 14px' }}
         >
           <div style={{ fontSize:12, opacity:.85, letterSpacing:'.08em', textTransform:'uppercase' }}>Step 2 — see alert</div>
           <div style={{ fontSize:14, marginTop:2 }}>Cloned voice</div>
-          <div style={{ fontSize:11, opacity:.8, marginTop:4 }}>~88 risk • alert in 2s</div>
+          <div style={{ fontSize:11, opacity:.8, marginTop:4 }}>synthetic sample • watch the gauge</div>
         </button>
       </div>
 

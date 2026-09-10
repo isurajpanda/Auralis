@@ -4,12 +4,21 @@
 //                   440+480Hz, 2s on / 4s off).
 // startRinger()   — what the CALLEE hears on incoming (double-burst
 //                   700+900Hz trill, clearly distinct from ringback).
-// stopRingback() / stopRinger() / stopAll() — call on every state change;
-//                   players are singletons so double-start is safe.
+// startBusy()     — engaged/busy tone (480+620Hz, 0.5s on / 0.5s off loop).
+//                   Call stopBusy() or stopAll() to silence (auto-stops
+//                   after a few seconds via stopBusyAfter()).
+// playEnded()     — one-shot call-ended confirmation (two descending beeps).
+// playDeclined()  — one-shot declined/rejected blip (two low beeps).
+// playNoAnswer()  — one-shot no-answer triple blip.
+// stopRingback() / stopRinger() / stopBusy() / stopAll() — call on every
+//                   state change; players are singletons so double-start
+//                   is safe.
 
 let ctx = null
 let ringback = null
 let ringer = null
+let busy = null
+let busyTimer = null
 
 function audio() {
   if (!ctx) {
@@ -106,9 +115,69 @@ export function stopRinger() {
   if (ringer) { ringer(); ringer = null }
 }
 
+export function startBusy() {
+  if (busy) return
+  busy = playPattern([480, 620], [500, 500], 0, 0.18)
+}
+
+export function stopBusy() {
+  if (busyTimer) { clearTimeout(busyTimer); busyTimer = null }
+  if (busy) { busy(); busy = null }
+}
+
+// Start busy tone that silences itself after `ms` (default 4s) so a
+// missed dismissal can't leave it ringing forever. Returns timer id.
+export function stopBusyAfter(ms = 4000) {
+  if (busyTimer) clearTimeout(busyTimer)
+  busyTimer = setTimeout(stopBusy, ms)
+  return busyTimer
+}
+
+// One-shot beep sequence: `steps` = [[freqHz, startMs, durMs], ...].
+function playBeeps(steps, level = 0.2) {
+  const ac = audio()
+  if (!ac) return
+  const t0 = ac.currentTime + 0.03
+  const oscs = []
+  try {
+    steps.forEach(([freq, startMs, durMs]) => {
+      const o = ac.createOscillator()
+      o.type = 'sine'
+      o.frequency.value = freq
+      const g = ac.createGain()
+      g.gain.value = 0.0001
+      o.connect(g)
+      g.connect(ac.destination)
+      o.start(t0 + startMs / 1000)
+      const t = t0 + startMs / 1000
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(level, t + 0.02)
+      g.gain.linearRampToValueAtTime(0.0001, t + durMs / 1000)
+      o.stop(t + durMs / 1000 + 0.05)
+      oscs.push(o)
+    })
+  } catch {}
+}
+
+export function playEnded() {
+  // descending confirmation: 880 -> 660
+  playBeeps([[880, 0, 160], [660, 200, 260]])
+}
+
+export function playDeclined() {
+  // low double blip
+  playBeeps([[440, 0, 160], [440, 220, 160]], 0.18)
+}
+
+export function playNoAnswer() {
+  // triple mid blip
+  playBeeps([[660, 0, 140], [660, 200, 140], [660, 400, 220]], 0.18)
+}
+
 export function stopAll() {
   stopRingback()
   stopRinger()
+  stopBusy()
 }
 
 // One-shot urgent triple-beep for high threat. Plays once per call (caller

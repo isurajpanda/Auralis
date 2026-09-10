@@ -43,7 +43,7 @@ export default function Dialer({ sessionId, setSessionId }) {
   useEffect(() => {
     if (!dialValue && myNumber) {
       // suggest another ext
-      const sugg = ['1001','1002','1003','1004','1005'].filter(x=>x!==myNumber)[0]
+      const sugg = ['1001','1002','1003','1004','1005','1006','1007'].filter(x=>x!==myNumber)[0]
       setDialValue(sugg)
     }
   }, [myNumber])
@@ -57,7 +57,7 @@ export default function Dialer({ sessionId, setSessionId }) {
           <div style={{ opacity: 0.6, marginTop: 4 }}>Fallback signaling at <code>{BACKEND_WS}/ws/signal</code> still allows web↔web via STUN (Asterisk WSL optional).</div>
           <div style={{ marginTop: 8, fontSize: 11, opacity: 0.5 }}>
             WSL: <code>powershell -File scripts/start-asterisk-wsl.ps1</code><br/>
-            Asterisk SIP WS: <code>wss://x.lan/asterisk/ws</code> • ARI: <code>https://x.lan/ari/</code> (voice-guard) via nginx
+            Asterisk SIP WS: <code>wss://surajpanda.qzz.io/asterisk/ws</code> • ARI: <code>https://surajpanda.qzz.io/ari/</code> (voice-guard) via nginx
           </div>
         </div>
         <DialPad value={dialValue} setValue={setDialValue} onCall={handleCall} onHangup={handleHangup} inCall={inCall} disabled={!registered} />
@@ -87,7 +87,7 @@ export default function Dialer({ sessionId, setSessionId }) {
           <h4>How to test web→web (no SIP needed)</h4>
           <ol style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4, opacity: 0.85, marginTop: 6 }}>
             <li>Open this app in <b>two browser windows/tabs</b>.</li>
-            <li>In Tab A pick <code>1001</code>, in Tab B pick <code>1002</code>.</li>
+            <li>In Tab A pick <code>1001 (admin)</code>, in Tab B pick <code>1002 (suraj)</code>.</li>
             <li>In Tab A dial <code>1002</code> → Tab B gets confirm popup → Accept.</li>
             <li>Allow mic in both → speak → watch gauge go live (uses same fusion as replay).</li>
             <li>Hangup → session appears in Dashboard history.</li>
@@ -96,7 +96,7 @@ export default function Dialer({ sessionId, setSessionId }) {
           <ol style={{ paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4, opacity: 0.85, marginTop: 6 }}>
             <li><code>powershell -File scripts/start-asterisk-wsl.ps1</code> (WSL must be running).</li>
             <li>Wait `wsl sudo asterisk -rx "pjsip show endpoints"` shows ready.</li>
-            <li>Use any SIP softphone (Linphone/Zoiper) register as <code>1003@your-ip:5060</code> / <code>1003pass</code>, then dial from web.</li>
+            <li>Use any SIP softphone (Linphone/Zoiper) register as <code>1003 (subrat)@your-ip:5060</code> / <code>1003pass</code>, then dial from web.</li>
           </ol>
         </div>
       </div>

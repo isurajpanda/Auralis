@@ -57,10 +57,24 @@ async def handle_live_audio_chunk(session_id: str, chunk_index: int, pcm_bytes: 
     # pcm_bytes is 16-bit mono
     try:
         waveform = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        peak = float(np.max(np.abs(waveform))) if len(waveform) else 0.0
+        n = _chunk_counts.get(session_id, 0) + 1
+        _chunk_counts[session_id] = n
+        if n == 1 or n % 10 == 0:
+            print(f"[LiveAudio] {session_id[:8]} chunk #{chunk_index} ({n} total): "
+                  f"{len(pcm_bytes)}B {sample_rate}Hz peak={peak:.3f}")
+        if peak < 0.001:
+            print(f"[LiveAudio] {session_id[:8]} chunk #{chunk_index} near-SILENT "
+                  f"(peak={peak:.4f}) — mic muted/blocked or wrong device?")
         from app.replay.replay_engine import process_chunk
         await process_chunk(session_id, chunk_index, waveform, sample_rate)
     except Exception as e:
-        print(f"[LiveAudio] chunk failed {e}")
+        import traceback
+        print(f"[LiveAudio] chunk failed sid={session_id[:8]} idx={chunk_index}: {e}")
+        traceback.print_exc()
+
+# sessions seen (for throttled logging above)
+_chunk_counts: dict[str, int] = {}
 
 # Example ARI config template (document in README)
 ARI_EXAMPLE = {

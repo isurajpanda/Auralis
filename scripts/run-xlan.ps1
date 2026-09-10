@@ -1,6 +1,6 @@
-# x.lan launcher - nginx 443 (frontend built -> nginx/html) + backend 9000 + optional WSL asterisk
+# surajpanda.qzz.io launcher - nginx 443 (frontend built -> nginx/html) + backend 9000 + optional WSL asterisk
 # Run from repo root: powershell -ExecutionPolicy Bypass -File scripts\run-xlan.ps1
-# Requires admin for nginx 80/443 + hosts (x.lan -> 127.0.0.1)
+# Requires admin for nginx 80/443 + hosts (surajpanda.qzz.io -> 127.0.0.1)
 param(
   [switch]$Stop,
   [switch]$NoAsterisk,
@@ -19,7 +19,7 @@ function Write-Status($label, $ok, $msg) {
 }
 
 if ($Stop) {
-  Write-Host "Stopping x.lan stack..." -ForegroundColor Yellow
+  Write-Host "Stopping surajpanda.qzz.io stack..." -ForegroundColor Yellow
   # nginx
   & "$nginxRoot\nginx.exe" -p $nginxRoot -s stop 2>$null
   taskkill /IM nginx.exe /F 2>$null | Out-Null
@@ -30,26 +30,26 @@ if ($Stop) {
   exit 0
 }
 
-Write-Host "=== Voice Clone Guard - x.lan (nginx 443) ===" -ForegroundColor Cyan
+Write-Host "=== Voice Clone Guard - surajpanda.qzz.io (nginx 443) ===" -ForegroundColor Cyan
 Write-Host "Root: $root" -ForegroundColor Gray
 Write-Host "Nginx: $nginxRoot" -ForegroundColor Gray
 
 # 0. Hosts check
-$hostsOk = (Get-Content "C:\Windows\System32\drivers\etc\hosts" -ErrorAction SilentlyContinue | Select-String "x.lan")
+$hostsOk = (Get-Content "C:\Windows\System32\drivers\etc\hosts" -ErrorAction SilentlyContinue | Select-String "surajpanda.qzz.io")
 if (-not $hostsOk) {
-  Write-Host "Adding hosts entry 127.0.0.1 x.lan (needs admin)..." -ForegroundColor Yellow
-  Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command Add-Content -Path 'C:\Windows\System32\drivers\etc\hosts' -Value '127.0.0.1 x.lan'; Add-Content -Path 'C:\Windows\System32\drivers\etc\hosts' -Value '::1 x.lan'" -Wait
+  Write-Host "Adding hosts entry 127.0.0.1 surajpanda.qzz.io (needs admin)..." -ForegroundColor Yellow
+  Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command Add-Content -Path 'C:\Windows\System32\drivers\etc\hosts' -Value '127.0.0.1 surajpanda.qzz.io'; Add-Content -Path 'C:\Windows\System32\drivers\etc\hosts' -Value '::1 surajpanda.qzz.io'" -Wait
 }
 
 # 0b. Cert check
-if (-not (Test-Path "$nginxRoot\conf\certs\x.lan.crt")) {
-  Write-Host "Cert missing at $nginxRoot\conf\certs\x.lan.crt - regenerate via openssl req ..." -ForegroundColor Red
+if (-not (Test-Path "$nginxRoot\conf\certs\surajpanda.qzz.io.crt")) {
+  Write-Host "Cert missing at $nginxRoot\conf\certs\surajpanda.qzz.io.crt - regenerate via openssl req ..." -ForegroundColor Red
 } else {
   # trust cert (once)
-  $certInstalled = certutil -store Root | Select-String "x.lan"
+  $certInstalled = certutil -store Root | Select-String "surajpanda.qzz.io"
   if (-not $certInstalled) {
-    Write-Host "Installing x.lan cert to Trusted Root (admin)..." -ForegroundColor Yellow
-    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command certutil -addstore Root '$nginxRoot\conf\certs\x.lan.crt'" -Wait
+    Write-Host "Installing surajpanda.qzz.io cert to Trusted Root (admin)..." -ForegroundColor Yellow
+    Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -Command certutil -addstore Root '$nginxRoot\conf\certs\surajpanda.qzz.io.crt'" -Wait
   }
 }
 
@@ -66,7 +66,7 @@ if (-not $SkipBuild) {
   Remove-Item -Force "$nginxRoot\html\index.html" -ErrorAction SilentlyContinue
   Copy-Item -Recurse -Force "$root\frontend\dist\*" "$nginxRoot\html\"
   if (-not (Test-Path "$nginxRoot\html\50x.html")) {
-    Set-Content "$nginxRoot\html\50x.html" '<!doctype html><html><head><title>50x Service Unavailable</title></head><body><h1>Backend unavailable</h1><p>nginx x.lan</p></body></html>'
+    Set-Content "$nginxRoot\html\50x.html" '<!doctype html><html><head><title>50x Service Unavailable</title></head><body><h1>Backend unavailable</h1><p>nginx surajpanda.qzz.io</p></body></html>'
   }
   Write-Status "Frontend" $true "$nginxRoot\html (built)"
 } else {
@@ -96,9 +96,9 @@ if (-not $NoAsterisk) {
 Write-Host ""
 Write-Host "[3/4] Backend FastAPI :9000 ..." -ForegroundColor Cyan
 if (-not (Test-Path "$root\backend\.env")) { Copy-Item "$root\backend\.env.example" "$root\backend\.env" -Force }
-# ensure ALLOW_ORIGINS includes https://x.lan
+# ensure ALLOW_ORIGINS includes https://surajpanda.qzz.io
 $envContent = Get-Content "$root\backend\.env" -Raw -ErrorAction SilentlyContinue
-if ($envContent -notlike "*x.lan*") { Write-Host "  Tip: backend ALLOW_ORIGINS=* already covers https://x.lan" -ForegroundColor Gray }
+if ($envContent -notlike "*surajpanda.qzz.io*") { Write-Host "  Tip: backend ALLOW_ORIGINS=* already covers https://surajpanda.qzz.io" -ForegroundColor Gray }
 
 $backendJob = Start-Job -Name "voice-guard-backend-xlan" -ScriptBlock {
   param($root)
@@ -110,11 +110,11 @@ $health = $null
 try { $health = Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:9000/health" -TimeoutSec 5 | Select-Object -ExpandProperty Content } catch {}
 $ok = $health -like "*models_loaded*"
 Write-Status "Backend" $ok "http://127.0.0.1:9000/health -> $health"
-if ($ok) { Write-Host "  Docs proxied at https://x.lan/docs" -ForegroundColor Gray }
+if ($ok) { Write-Host "  Docs proxied at https://surajpanda.qzz.io/docs" -ForegroundColor Gray }
 
 # 4. Nginx (443)
 Write-Host ""
-Write-Host "[4/4] Nginx https://x.lan (80->443) ..." -ForegroundColor Cyan
+Write-Host "[4/4] Nginx https://surajpanda.qzz.io (80->443) ..." -ForegroundColor Cyan
 # test config
 $nginxTest = cmd /c "`"$nginxRoot\nginx.exe`" -p `"$nginxRoot`" -t 2>&1"
 $testOk = ($LASTEXITCODE -eq 0) -or ($nginxTest -like "*test is successful*")
@@ -138,25 +138,25 @@ try {
 
 $nginxProc = Get-Process nginx -ErrorAction SilentlyContinue
 $nginxOk = $null -ne $nginxProc
-Write-Status "Nginx" $nginxOk "https://x.lan (frontend) + https://x.lan/api + https://x.lan/ws + https://x.lan/ari + wss://x.lan/asterisk/ws"
+Write-Status "Nginx" $nginxOk "https://surajpanda.qzz.io (frontend) + https://surajpanda.qzz.io/api + https://surajpanda.qzz.io/ws + https://surajpanda.qzz.io/ari + wss://surajpanda.qzz.io/asterisk/ws"
 if ($nginxOk) {
   # probe frontend via https (curl -k works on PS 5.1, no SkipCertificateCheck)
-  $jh = cmd /c "curl.exe -k -s https://x.lan/health 2>nul"
-  Write-Host "  https://x.lan/health -> $jh" -ForegroundColor DarkGray
-  $fh = cmd /c "curl.exe -k -s -I https://x.lan/ 2>nul | findstr HTTP"
-  Write-Host "  https://x.lan/ $fh" -ForegroundColor DarkGray
+  $jh = cmd /c "curl.exe -k -s https://surajpanda.qzz.io/health 2>nul"
+  Write-Host "  https://surajpanda.qzz.io/health -> $jh" -ForegroundColor DarkGray
+  $fh = cmd /c "curl.exe -k -s -I https://surajpanda.qzz.io/ 2>nul | findstr HTTP"
+  Write-Host "  https://surajpanda.qzz.io/ $fh" -ForegroundColor DarkGray
 }
 
 Write-Host ""
 Write-Host "=== STATUS ===" -ForegroundColor Cyan
 Get-Job | Format-Table Name,State,HasMoreData -AutoSize
 Write-Host ""
-Write-Host "Frontend: https://x.lan/  (also http://x.lan -> 301)" -ForegroundColor Green
-Write-Host "Backend : https://x.lan/health  https://x.lan/docs  https://x.lan/api/*  wss://x.lan/ws/*" -ForegroundColor Green
-Write-Host "Asterisk: wss://x.lan/asterisk/ws  https://x.lan/ari/  (proxied to 127.0.0.1:8088)" -ForegroundColor Green
+Write-Host "Frontend: https://surajpanda.qzz.io/  (also http://surajpanda.qzz.io -> 301)" -ForegroundColor Green
+Write-Host "Backend : https://surajpanda.qzz.io/health  https://surajpanda.qzz.io/docs  https://surajpanda.qzz.io/api/*  wss://surajpanda.qzz.io/ws/*" -ForegroundColor Green
+Write-Host "Asterisk: wss://surajpanda.qzz.io/asterisk/ws  https://surajpanda.qzz.io/ari/  (proxied to 127.0.0.1:8088)" -ForegroundColor Green
 Write-Host "Built  : $nginxRoot\html (from frontend/dist)" -ForegroundColor Gray
-Write-Host "Cert   : $nginxRoot\conf\certs\x.lan.crt (SAN DNS:x.lan + IP 192.168.1.73/100 + 127.0.0.1, trusted in Root)" -ForegroundColor Gray
-Write-Host "Hosts  : C:\Windows\System32\drivers\etc\hosts must have 127.0.0.1 x.lan (other LAN devices: add 192.168.1.100 x.lan)" -ForegroundColor Yellow
+Write-Host "Cert   : $nginxRoot\conf\certs\surajpanda.qzz.io.crt (SAN DNS:surajpanda.qzz.io + IP 192.168.1.73/100 + 127.0.0.1, trusted in Root)" -ForegroundColor Gray
+Write-Host "Hosts  : C:\Windows\System32\drivers\etc\hosts must have 127.0.0.1 surajpanda.qzz.io (other LAN devices: add 192.168.1.100 surajpanda.qzz.io)" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Logs: Get-Job | Receive-Job -Keep  |  nginx logs: $nginxRoot\logs\error.log" -ForegroundColor Yellow
 Write-Host "Stop: powershell -File scripts\run-xlan.ps1 -Stop" -ForegroundColor Yellow

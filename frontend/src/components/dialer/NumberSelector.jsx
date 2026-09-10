@@ -1,11 +1,13 @@
 import React from 'react'
 
 const NUMBERS = [
-  { ext: '1001', label: 'Alice', pass: '1001pass', role:'Product' },
-  { ext: '1002', label: 'Bob', pass: '1002pass', role:'Security' },
-  { ext: '1003', label: 'Carol', pass: '1003pass', role:'Support' },
-  { ext: '1004', label: 'Dave', pass: '1004pass', role:'Ops' },
-  { ext: '1005', label: 'Eve', pass: '1005pass', role:'QA' },
+  { ext: '1001', label: 'admin', pass: '1001pass', role:'Admin' },
+  { ext: '1002', label: 'suraj', pass: '1002pass', role:'Product' },
+  { ext: '1003', label: 'subrat', pass: '1003pass', role:'Security' },
+  { ext: '1004', label: 'sagar', pass: '1004pass', role:'Support' },
+  { ext: '1005', label: 'krutarth', pass: '1005pass', role:'Ops' },
+  { ext: '1006', label: 'yashi', pass: '1006pass', role:'QA' },
+  { ext: '1007', label: 'anand', pass: '1007pass', role:'QA' },
 ]
 
 export default function NumberSelector({ myNumber, setMyNumber }) {
@@ -48,7 +50,7 @@ export default function NumberSelector({ myNumber, setMyNumber }) {
 
       <div style={{ marginTop:12, fontSize:11, color:'var(--muted-2)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)', padding:'10px 12px', borderRadius:12 }}>
         <div className="mono" style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-          <span>sip:{myNumber || '___'}@x.lan</span><span style={{opacity:.4}}>•</span><span>wss://x.lan/asterisk/ws</span>
+          <span>sip:{myNumber || '___'}@surajpanda.qzz.io</span><span style={{opacity:.4}}>•</span><span>wss://surajpanda.qzz.io/asterisk/ws</span>
         </div>
       </div>
     </div>

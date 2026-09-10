@@ -80,8 +80,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             pcm = base64.b64decode(pcm_b64)
                             from app.sip.asterisk_bridge import handle_live_audio_chunk
                             await handle_live_audio_chunk(session_id, idx, pcm, sr)
-                except:
-                    pass
+                        else:
+                            print(f"[WS] empty audio_chunk sid={session_id[:8]} idx={idx}")
+                except Exception as e:
+                    print(f"[WS] audio_chunk parse failed sid={session_id[:8]}: {e}")
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
     except Exception as e:

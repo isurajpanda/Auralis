@@ -13,7 +13,7 @@ export default function DialPad({ value, setValue, onCall, onHangup, inCall, dis
     <div className="card card-pad">
       <div className="section-title">Phone</div>
       <div className="dial-display mono">
-        {value ? <span>{value}</span> : <span style={{ opacity:.35, fontSize:14, letterSpacing:'.06em' }}>enter number — try 1001…1005</span>}
+        {value ? <span>{value}</span> : <span style={{ opacity:.35, fontSize:14, letterSpacing:'.06em' }}>enter number — try 1001…1007</span>}
       </div>
 
       <div className="dial-grid">
@@ -34,7 +34,7 @@ export default function DialPad({ value, setValue, onCall, onHangup, inCall, dis
       </div>
 
       <div style={{ marginTop:10, display:'flex', gap:6, flexWrap:'wrap' }}>
-        <span className="badge badge-idle" style={{ fontSize:11 }}>Web→Web: 1001-1005</span>
+        <span className="badge badge-idle" style={{ fontSize:11 }}>Web→Web: 1001-1007</span>
         <span className="badge badge-idle" style={{ fontSize:11 }}>Echo: 9196</span>
       </div>
     </div>

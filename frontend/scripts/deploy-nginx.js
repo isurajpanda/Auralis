@@ -1,5 +1,5 @@
 // Syncs the Vite build output (dist/) into the local nginx html/ dir so that
-// https://x.lan/ always serves the latest frontend. Preserves nginx-owned
+// https://surajpanda.qzz.io/ always serves the latest frontend. Preserves nginx-owned
 // files like 50x.html. Override target with NGINX_HTML_DIR env var.
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { useSip } from './hooks/useSip.js'
 import { useRiskSocket } from './hooks/useRiskSocket.js'
 import { BACKEND_HTTP } from './lib/config.js'
-import { startRingback, stopRingback, startRinger, stopRinger, stopAll, playThreatBeep } from './lib/ringtones.js'
-
-const IDENTITIES = [
-  { ext: '1001', name: 'Alice' },
-  { ext: '1002', name: 'Bob' },
-  { ext: '1003', name: 'Carol' },
-  { ext: '1004', name: 'Dave' },
-  { ext: '1005', name: 'Eve' },
-]
+import { CONTACTS as IDENTITIES } from './lib/contacts.js'
+import { startRingback, stopRingback, startRinger, stopRinger, stopAll, stopBusy, startBusy, stopBusyAfter, playEnded, playDeclined, playNoAnswer, playThreatBeep } from './lib/ringtones.js'
 
 const KEYS = [
   { d: '1', s: '' }, { d: '2', s: 'ABC' }, { d: '3', s: 'DEF' },
@@ -41,19 +35,23 @@ function loadLocal() {
   } catch { return [] }
 }
 
-export default function App() {
-  const [myExt, setMyExt] = useState('1001')
+export default function App({ sessionId: propSessionId, setSessionId: propSetSessionId } = {}) {
+  const [myExt, setMyExt] = useState('') // no default — user picks on start
   const [digits, setDigits] = useState('')
   const [tab, setTab] = useState('keypad') // keypad | recents (mobile only)
   const [screen, setScreen] = useState('dial') // dial | call
   const [peer, setPeer] = useState('')
-  const [sessionId, setSessionId] = useState(null)
+  // Live session is shared with /dashboard via Site state when provided
+  // (phone calls then stream on the dashboard); falls back to local state.
+  const [localSessionId, setLocalSessionId] = useState(null)
+  const sessionId = propSessionId !== undefined ? propSessionId : localSessionId
+  const setSessionId = propSetSessionId ?? setLocalSessionId
   const [callStart, setCallStart] = useState(null)
   const [elapsed, setElapsed] = useState(0)
   const [serverRecents, setServerRecents] = useState([])
   const [localRecents, setLocalRecents] = useState(loadLocal)
   const [lastCall, setLastCall] = useState(null) // { peer, duration, level, note }
-  const [showIdentity, setShowIdentity] = useState(false)
+  const [showIdentity, setShowIdentity] = useState(true) // prompt on start
 
   const peerRef = useRef('')
   const screenRef = useRef(screen)
@@ -104,19 +102,31 @@ export default function App() {
     return 'Ended by other side'
   }
 
-  const { registered, inCall, status, remoteLevel, uploadedChunks, incoming, acceptIncoming, rejectIncoming, call, hangup, startMicUpload, stopMicUpload, muted, toggleMute, speaker, toggleSpeaker, remoteAudioRef } = useSip(myExt, {
+  const { registered, inCall, status, remoteLevel, peerHeard, uploadedChunks, incoming, acceptIncoming, rejectIncoming, call, hangup, startMicUpload, stopMicUpload, muted, toggleMute, speaker, toggleSpeaker, remoteAudioRef } = useSip(myExt, {
     onConnected: () => {
       // Timer runs on connected time (not ringing) on both sides.
       callStartRef.current = Date.now()
       setCallStart(Date.now())
       setElapsed(0)
     },
-    onRemoteHangup: (reason) => { finishCall(remoteNote(reason)) },
+    onRemoteHangup: (reason) => {
+      finishCall(remoteNote(reason))
+      // Robust end-of-call audio: busy loops briefly, everything else is a short blip.
+      if (reason === 'busy') { startBusy(); stopBusyAfter(4000) }
+      else if (reason === 'declined') playDeclined()
+      else if (reason === 'failed' || reason === 'cancelled') playNoAnswer()
+      else playEnded()
+    },
     onMissedCall: (from) => {
       peerRef.current = from || peerRef.current
       finishCall(from ? `Missed call from ${from}` : 'Missed call')
+      playEnded()
     },
-    onNoAnswer: () => { finishCall('No answer') },
+    onNoAnswer: () => { finishCall('No answer'); playNoAnswer() },
+    onMediaFailed: (kind) => {
+      finishCall(kind === 'mic' ? 'Microphone unavailable — check permission' : 'Signaling offline — re-check connection')
+      playNoAnswer()
+    },
   })
   const { latest, alert } = useRiskSocket(sessionId)
   const level = latest?.risk_level ?? 'low'
@@ -158,7 +168,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (showIdentity) {
-        if (e.key === 'Escape') setShowIdentity(false)
+        if (e.key === 'Escape' && myExt) setShowIdentity(false)
         return
       }
       if (screenRef.current === 'call') {
@@ -171,11 +181,12 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pushDigit, showIdentity])
+  }, [pushDigit, showIdentity, myExt])
 
   const startCall = async (target) => {
     const num = (target ?? digits).trim()
     if (!num || !myExt || screenRef.current === 'call') return
+    stopBusy() // clear any lingering busy tone before dialling
     peerRef.current = num
     setPeer(num)
     setScreen('call')
@@ -198,9 +209,11 @@ export default function App() {
     const p = peerRef.current
     hangup(p, 'ended')
     await finishCall(null)
+    playEnded()
   }
 
   const acceptCall = async () => {
+    stopBusy()
     callStartRef.current = Date.now()
     setCallStart(Date.now())
     setElapsed(0)
@@ -222,6 +235,7 @@ export default function App() {
     setPeer('')
     peerRef.current = ''
     setLastCall({ peer: p, duration: 0, level: 'low', note: 'You declined' })
+    playDeclined()
   }
 
   const redial = () => {
@@ -230,6 +244,7 @@ export default function App() {
   }
 
   const myName = IDENTITIES.find((i) => i.ext === myExt)?.name ?? ''
+  const peerName = IDENTITIES.find((i) => i.ext === peer)?.name ?? ''
   const ringing = !!incoming && !inCall && screen === 'call'
   const callingOut = screen === 'call' && !inCall && !incoming && status === 'calling'
   const statusText = ringing ? 'Incoming call' : callingOut ? 'Calling…' : fmtTime(elapsed)
@@ -388,9 +403,12 @@ export default function App() {
           <button className="identity-btn" onClick={() => screen === 'dial' && setShowIdentity(true)} title="Choose your number">
             <span className={`presence ${registered ? 'on' : ''}`} />
             <i className="bi bi-person-circle" />
-            {myExt} · {myName}
+            {myExt ? `${myExt} · ${myName}` : 'Choose number'}
             <i className="bi bi-chevron-down chev" />
           </button>
+          <Link to="/dashboard" className="identity-btn" title="Open dashboard" style={{ textDecoration: 'none' }}>
+            <i className="bi bi-speedometer2" />
+          </Link>
         </header>
 
         {screen === 'dial' ? (
@@ -419,8 +437,12 @@ export default function App() {
 
             <div className="caller">
               <div className="big-avatar"><i className="bi bi-person-circle" /></div>
-              <h1>{peer || 'Unknown'}</h1>
+              <h1>{peerName || peer || 'Unknown'}</h1>
+              {peerName && peer && <p className="caller-ext">{peer}</p>}
               <p className="call-status">{statusText}</p>
+              <p className="audio-health" title="Mic = your audio reaching backend scoring. Peer = their voice reaching you.">
+                Mic {uploadedChunks > 0 ? '●' : '○'} · Peer {peerHeard ? '●' : '○'}
+              </p>
               <p className="risk-sub">{hasScore ? risk.sub : uploadedChunks > 0 ? `Analyzed ${uploadedChunks} chunk${uploadedChunks === 1 ? '' : 's'} — keep talking` : 'Listening… speak to score'}</p>
             </div>
 
@@ -467,10 +489,10 @@ export default function App() {
         )}
 
         {showIdentity && (
-          <div className="sheet-backdrop" onClick={() => setShowIdentity(false)}>
+          <div className="sheet-backdrop" onClick={() => myExt && setShowIdentity(false)}>
             <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Choose your number">
               <h3><i className="bi bi-person-circle" /> My number</h3>
-              <p>Choose which extension you are calling from.</p>
+              <p>{myExt ? 'Choose which extension you are calling from.' : 'Welcome — pick your number to get started.'}</p>
               {IDENTITIES.map((i) => (
                 <button
                   key={i.ext}
@@ -482,7 +504,9 @@ export default function App() {
                   {myExt === i.ext && <span className="tick"><i className="bi bi-check-lg" /></span>}
                 </button>
               ))}
-              <button className="ghost full" onClick={() => setShowIdentity(false)}><i className="bi bi-x-lg" /> Close</button>
+              {myExt && (
+                <button className="ghost full" onClick={() => setShowIdentity(false)}><i className="bi bi-x-lg" /> Close</button>
+              )}
             </div>
           </div>
         )}

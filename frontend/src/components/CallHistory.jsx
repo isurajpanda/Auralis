@@ -1,21 +1,37 @@
 import React, { useEffect, useState } from 'react'
 import { BACKEND_HTTP } from '../lib/config.js'
+import { logActivity, logOnce } from '../lib/activityLog.js'
 
 export default function CallHistory({ refreshKey }) {
   const [calls, setCalls] = useState([])
   const [detail, setDetail] = useState(null)
 
   const load = async () => {
-    const res = await fetch(`${BACKEND_HTTP}/api/calls`)
-    const data = await res.json()
-    setCalls(data)
+    try {
+      const res = await fetch(`${BACKEND_HTTP}/api/calls`)
+      if (!res.ok) throw new Error(`http ${res.status}`)
+      const data = await res.json()
+      setCalls(Array.isArray(data) ? data : [])
+    } catch (e) {
+      logOnce('calls-unreachable', 'error', `Call history unreachable: ${e.message}`)
+    }
   }
-  useEffect(() => { load() }, [refreshKey])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 10000) // live calls from other pages land here
+    return () => clearInterval(t)
+  }, [refreshKey])
 
   const open = async (id) => {
-    const res = await fetch(`${BACKEND_HTTP}/api/calls/${id}`)
-    const data = await res.json()
-    setDetail(data)
+    try {
+      const res = await fetch(`${BACKEND_HTTP}/api/calls/${id}`)
+      if (!res.ok) throw new Error(`http ${res.status}`)
+      const data = await res.json()
+      setDetail(data)
+      logActivity('info', `Opened session ${String(id).slice(0, 8)} (${(data.scores ?? []).length} chunks)`)
+    } catch (e) {
+      logActivity('warn', `Could not open session: ${e.message}`)
+    }
   }
 
   return (
@@ -33,7 +49,7 @@ export default function CallHistory({ refreshKey }) {
               <tr key={c.session_id} onClick={() => open(c.session_id)} style={{ cursor:'pointer' }}>
                 <td><span className="mono" style={{ background:'rgba(255,255,255,0.06)', padding:'4px 8px', borderRadius:8, fontSize:12 }}>{c.session_id.slice(0, 8)}</span></td>
                 <td><span className="badge badge-idle" style={{ padding:'4px 8px', fontSize:11 }}>{c.mode}</span></td>
-                <td className="hide-mobile" style={{ color:'var(--muted)', fontSize:12 }}>{new Date(c.started_at).toLocaleTimeString()}</td>
+                <td className="hide-mobile" style={{ color:'var(--muted)', fontSize:12 }}>{c.started_at ? new Date(c.started_at).toLocaleTimeString() : '—'}</td>
                 <td style={{ fontWeight:700 }}>{c.final_risk_score ?? '—'}</td>
                 <td><span className={`level level-${c.final_risk_level || 'low'}`}>{c.final_risk_level || 'pending'}</span></td>
               </tr>
@@ -60,7 +76,7 @@ export default function CallHistory({ refreshKey }) {
           </div>
           <div style={{ marginTop:10, fontSize:11, color:'var(--muted)', display:'grid', gap:4, maxHeight:120, overflowY:'auto' }}>
             {detail.scores.map(s => (
-              <div key={s.chunk_index} className="mono">#{s.chunk_index} · {s.fused_risk_score} ({s.risk_level}) · AASIST {s.model_scores.aasist} · RawNet2 {s.model_scores.rawnet2} · XLSR {s.model_scores.xlsr}</div>
+              <div key={s.chunk_index} className="mono">#{s.chunk_index} · {s.fused_risk_score} ({s.risk_level}) · {Object.entries(s.model_scores ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ')}</div>
             ))}
           </div>
         </div>

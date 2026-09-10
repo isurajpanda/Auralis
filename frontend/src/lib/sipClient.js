@@ -1,4 +1,4 @@
-// Full SIP.js wrapper — uses Asterisk WSS via nginx at wss://x.lan/asterisk/ws when available,
+// Full SIP.js wrapper — uses Asterisk WSS via nginx at wss://surajpanda.qzz.io/asterisk/ws when available,
 // otherwise Dialer falls back to backend signaling (useSip.js via /ws/signal)
 import { UserAgent, Registerer, Inviter, SessionState } from 'sip.js'
 import { SIP_WS_URL, SIP_DOMAIN } from './config.js'

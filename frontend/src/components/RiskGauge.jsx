@@ -15,7 +15,7 @@ export default function RiskGauge({ score, level }) {
     <div className="card card-pad" style={{ textAlign:'center' }}>
       <div className="kicker" style={{ justifyContent:'center', display:'flex' }}>Impersonation risk</div>
       <div className="gauge-ring" style={{ marginTop:12 }}>
-        <svg width="100%" height="100%" viewBox="0 0 180 180">
+        <svg viewBox="0 0 180 180" role="img" aria-label={`risk ${pct.toFixed(0)} percent ${label}`}>
           <circle cx="90" cy="90" r={r} className="gauge-bg" />
           <circle
             cx="90" cy="90" r={r}
@@ -35,7 +35,7 @@ export default function RiskGauge({ score, level }) {
       <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'var(--muted)', marginTop:12, padding:'0 6px' }}>
         <span>0</span><span style={{ color: pct >= 30 ? 'var(--muted)' : '#22c55e' }}>30</span><span style={{ color: pct >= 70 ? '#ef4444' : 'var(--muted)' }}>70</span><span>100</span>
       </div>
-      <div style={{ height:8, background:'#0a1430', borderRadius:999, overflow:'hidden', marginTop:6, border:'1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ height:8, background:'#1a1a1a', borderRadius:999, overflow:'hidden', marginTop:6, border:'1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ width:`${pct}%`, height:'100%', background:color, transition:'width .5s ease' }} />
       </div>
 
